@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ABU-ALEEN CLONE WEB</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/editor.css') }}" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 10px;  
+        }
+        .container {
+            max-width: 99%;    
+            margin: 0 auto;
+            padding: 0 10px;   
+        }
+        .preview-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 15px;     
+            margin-top: 15px;
+        }
+        .btn-success {
+            padding: 8px 16px;
+            font-weight: 500;
+        }
+        .btn-success i {
+            margin-left: 8px;
+        }
+        #previewFrame {
+            width: 100%;
+            height: 800px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 5px 0;    
+        }
+        .input-group {
+            max-width: 600px;  
+            margin: 0 auto 15px auto;
+        }
+        /* تحسين تنسيق مربع التحرير */
+        .editor-dialog {
+            position: fixed;
+            background: white;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 1000;
+            min-width: 300px;
+        }
+        .form-group {
+            margin-bottom: 10px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .form-actions {
+            margin-top: 15px;
+            text-align: right;
+        }
+        .form-actions button {
+            margin-left: 10px;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .save-btn {
+            background-color: #28a745;
+            color: white;
+        }
+        .cancel-btn {
+            background-color: #6c757d;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <h1 class="text-center mb-4">ABU-ALEEN CLONE WEB</h1>
+                
+                <div class="input-group mb-3">
+                    <input type="text" id="urlInput" class="form-control" placeholder="أدخل رابط الموقع">
+                    <button class="btn btn-primary" type="button" id="cloneButton">استنساخ</button>
+                </div>
+
+                <div id="previewContainer" class="preview-container">
+                    <div class="preview-header">
+                        <h2>ABU-ALEEN CLONE WEB</h2>
+                        <button id="downloadButton" class="btn btn-success" style="display: none;">
+                            <i class="fas fa-download"></i>
+                            تحميل الموقع المعدل
+                        </button>
+                    </div>
+                    <iframe id="previewFrame"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/editor.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlInput = document.getElementById('urlInput');
+            const cloneButton = document.getElementById('cloneButton');
+            const previewFrame = document.getElementById('previewFrame');
+            const downloadButton = document.getElementById('downloadButton');
+            let currentFileId = null;
+
+            cloneButton.addEventListener('click', async function() {
+                const url = urlInput.value.trim();
+                if (!url) {
+                    alert('الرجاء إدخال رابط الموقع');
+                    return;
+                }
+
+                try {
+                    cloneButton.disabled = true;
+                    cloneButton.innerHTML = '<span class="spinner-border spinner-border-sm"></span> جاري الاستنساخ...';
+
+                    console.log('Sending request with URL:', url);  
+                    const response = await fetch('/clone', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ url: url })
+                    });
+
+                    console.log('Received response:', response);  
+                    const result = await response.json();
+                    console.log('Response data:', result);  
+
+                    if (result.success) {
+                        currentFileId = result.file_id;
+                        previewFrame.src = `/preview/${result.file_id}`;
+                        downloadButton.style.display = 'inline-block';
+                    } else {
+                        throw new Error(result.error || 'حدث خطأ غير معروف');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);  
+                    alert('حدث خطأ: ' + error.message);
+                } finally {
+                    cloneButton.disabled = false;
+                    cloneButton.innerHTML = 'استنساخ';
+                }
+            });
+
+            downloadButton.addEventListener('click', function() {
+                if (currentFileId) {
+                    window.location.href = `/download/${currentFileId}`;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
