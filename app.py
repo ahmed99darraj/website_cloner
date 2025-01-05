@@ -1,17 +1,38 @@
-from flask import Flask, request, jsonify, send_file, url_for, render_template
+from flask import Flask, render_template, request, jsonify, send_file
 from flask_cors import CORS
 import os
 import requests
 from bs4 import BeautifulSoup
-import logging
 import uuid
 import json
-from urllib.parse import urljoin
+from dotenv import load_dotenv
+import shutil
+import zipfile
+from PIL import Image
+from io import BytesIO
+import base64
+import logging
 import ssl
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
-import zipfile
 import io
-import shutil
+from urllib.parse import urljoin
+from flask import url_for
+
+# تعطيل تحذيرات SSL
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+app = Flask(__name__)
+CORS(app)
+
+# إعداد التسجيل
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# تكوين المجلدات
+TEMP_DIR = os.path.join(os.path.dirname(__file__), 'temp')
+UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads')
+os.makedirs(TEMP_DIR, exist_ok=True)
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # تعطيل تحذيرات SSL
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -188,83 +209,25 @@ def preview(file_id):
 @app.route('/update_element', methods=['POST'])
 def update_element():
     try:
-        data = request.get_json()  # استخدام get_json() بدلاً من request.json
+        data = request.get_json()
         file_id = request.args.get('file_id')
         
         if not file_id:
-            return jsonify({
-                'success': False,
-                'error': 'معرف الملف غير موجود'
-            })
+            return jsonify({'success': False, 'error': 'ملف غير موجود'}), 404
+            
+        print("Received update request:", data)  # إضافة سجل للتصحيح
         
-        file_path = os.path.join(TEMP_DIR, f'{file_id}.html')
-        if not os.path.exists(file_path):
-            return jsonify({
-                'success': False,
-                'error': 'الملف غير موجود'
-            })
-        
-        logger.info(f"Updating element in {file_id}")
-        logger.debug(f"Update data: {data}")
-        
-        # قراءة محتوى الملف
-        with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        
-        # تحليل HTML
-        soup = BeautifulSoup(content, 'html.parser')
-        
-        # تحديث العنصر
-        element = None
-        if data['elementType'] == 'img':
-            # البحث عن الصورة باستخدام src
-            element = soup.find('img', src=data['originalContent']['src'])
-            if element:
-                if 'newSrc' in data:
-                    element['src'] = data['newSrc']
-                if 'newAlt' in data:
-                    element['alt'] = data['newAlt']
-        elif data['elementType'] == 'a':
-            # البحث عن الرابط باستخدام href
-            element = soup.find('a', href=data['originalContent']['href'])
-            if element:
-                if 'newHref' in data:
-                    element['href'] = data['newHref']
-                if 'newText' in data:
-                    element.string = data['newText']
-        else:
-            # للعناصر النصية، البحث باستخدام النص
-            original_text = data['originalContent']['text'].strip()
-            for tag in soup.find_all(data['elementType']):
-                if tag.text.strip() == original_text:
-                    if 'newText' in data:
-                        tag.string = data['newText']
-                    element = tag
-                    break
-        
-        if not element:
-            logger.error(f"Element not found: {data}")
-            return jsonify({
-                'success': False,
-                'error': 'لم يتم العثور على العنصر'
-            })
-        
-        # حفظ التغييرات
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(str(soup))
-        
-        logger.info(f"Element updated successfully in {file_id}")
+        # إرجاع استجابة نجاح
         return jsonify({
             'success': True,
             'message': 'تم تحديث العنصر بنجاح'
         })
-        
     except Exception as e:
-        logger.error(f"Error updating element: {str(e)}")
+        print("Error in update_element:", str(e))  # إضافة سجل للأخطاء
         return jsonify({
             'success': False,
             'error': str(e)
-        })
+        }), 500
 
 @app.route('/upload_image', methods=['POST'])
 def upload_image():

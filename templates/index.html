@@ -124,25 +124,17 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/editor.js') }}"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const urlInput = document.getElementById('urlInput');
-            const cloneButton = document.getElementById('cloneButton');
-            const previewFrame = document.getElementById('previewFrame');
-            const downloadButton = document.getElementById('downloadButton');
-            let currentFileId = null;
+        $(document).ready(function() {
+            window.FILE_ID = null;  // تهيئة متغير FILE_ID
 
-            cloneButton.addEventListener('click', async function() {
-                const url = urlInput.value.trim();
+            $('#cloneButton').click(async function() {
+                const url = $('#urlInput').val();
                 if (!url) {
-                    alert('الرجاء إدخال رابط الموقع');
+                    alert('الرجاء إدخال رابط');
                     return;
                 }
 
                 try {
-                    cloneButton.disabled = true;
-                    cloneButton.innerHTML = '<span class="spinner-border spinner-border-sm"></span> جاري الاستنساخ...';
-
-                    console.log('Sending request with URL:', url);  
                     const response = await fetch('/clone', {
                         method: 'POST',
                         headers: {
@@ -151,31 +143,28 @@
                         body: JSON.stringify({ url: url })
                     });
 
-                    console.log('Received response:', response);  
-                    const result = await response.json();
-                    console.log('Response data:', result);  
-
-                    if (result.success) {
-                        currentFileId = result.file_id;
-                        previewFrame.src = `/preview/${result.file_id}`;
-                        downloadButton.style.display = 'inline-block';
+                    const data = await response.json();
+                    if (data.success) {
+                        window.FILE_ID = data.file_id;  // حفظ FILE_ID
+                        $('#previewFrame').attr('src', `/temp/${data.file_id}.html`);
+                        $('#downloadButton').show();
                     } else {
-                        throw new Error(result.error || 'حدث خطأ غير معروف');
+                        alert('حدث خطأ: ' + data.error);
                     }
                 } catch (error) {
-                    console.error('Error:', error);  
-                    alert('حدث خطأ: ' + error.message);
-                } finally {
-                    cloneButton.disabled = false;
-                    cloneButton.innerHTML = 'استنساخ';
+                    console.error('Error:', error);
+                    alert('حدث خطأ أثناء نسخ الموقع');
                 }
             });
 
-            downloadButton.addEventListener('click', function() {
-                if (currentFileId) {
-                    window.location.href = `/download/${currentFileId}`;
+            // تحقق من وجود FILE_ID قبل تحديث العنصر
+            function checkFileId() {
+                if (!window.FILE_ID) {
+                    alert('الرجاء نسخ موقع أولاً');
+                    return false;
                 }
-            });
+                return true;
+            }
         });
     </script>
 </body>
